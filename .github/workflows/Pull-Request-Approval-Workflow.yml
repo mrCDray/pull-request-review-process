@@ -1,0 +1,49 @@
+name: Pull Request Approval Workflow
+run-name: ${{ inputs.pr_number != '' && format('Test Assign Reviewers for PR \#{0}', inputs.pr_number) || format('Assign Reviewers for PR \#{0} to {1}', github.event.pull_request.number, github.base_ref) }}
+
+on: 
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Override the PR number (for testing purposes)'
+
+permissions:
+  pull-requests: write
+  contents: read
+  statuses: write
+
+jobs:
+  assign-reviewers-and-assignees:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.PR_APP_ID }}
+          private-key: ${{ secrets.PR_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+  
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyYAML PyGithub gitpython
+
+      - name: Process PR Reviews
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token  }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_ORGANIZATION: ${{ github.repository_owner }}
+          TEAM_NAME: ${{ vars.TEAM_NAME }}  # Uses repo variable with org fallback
+        run: | 
+          python scripts/pr_review_manager.py
