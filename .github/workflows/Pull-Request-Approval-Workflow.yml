@@ -1,3 +1,4 @@
+
 name: Pull Request Approval Workflow
 run-name: ${{ inputs.pr_number != '' && format('Test Assign Reviewers for PR \#{0}', inputs.pr_number) || format('Assign Reviewers for PR \#{0} to {1}', github.event.pull_request.number, github.base_ref) }}
 
@@ -15,10 +16,12 @@ permissions:
   pull-requests: write
   contents: read
   statuses: write
+  id-token: write
 
 jobs:
   assign-reviewers-and-assignees:
     runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token
